@@ -1,15 +1,21 @@
+import requests
 import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
 
-ratingUser = st.session_state.ratingUser
-users_names = ("Adrian", "Miguel", "Juanma", "Gonzalo", "Mariana", "Bella", "Diego", "Enrique", "Alejandro", "Juan", "Raul", "Angel")
-current_date = datetime.now().strftime("%d-%m-%y")
-csv_file_name = f"feedback_semanal_{current_date}.csv"
-current_directory = os.getcwd()
-csv_path = os.path.join(current_directory, csv_file_name)
+rating_user = st.session_state.ratingUser
+request_name_by_mail = requests.get("http://localhost:8000/trabajadores/" + rating_user).json()
+rating_user_name = f"{request_name_by_mail[0]} {request_name_by_mail[1]} {request_name_by_mail[2]}"
 
+request_users_names = requests.get("http://localhost:8000/trabajadores/name").json()
+users_names = list(map(lambda name: ' '.join(filter(None, name)), request_users_names))
+
+
+
+
+current_date = datetime.now().strftime("%d-%m-%y")
+current_directory = os.getcwd()
 
 if "feedback_df" not in st.session_state:
     st.session_state.feedback_df = pd.DataFrame(columns=["Usuario",
@@ -26,7 +32,7 @@ if "feedback_df" not in st.session_state:
 st.image('stemdoLOGO.png', caption=None, use_column_width='always')
 
 st.title('FEEDBACK')
-st.header('Buenas ' + ratingUser)
+st.header('Buenas ' + rating_user_name)
 
 
 if "visibility" not in st.session_state:
@@ -38,55 +44,61 @@ if st.session_state.ratingUser:
     
     ratedUser = st.selectbox(
         "Usuario a valorar:",
-        [user for user in users_names if user != st.session_state.ratingUser],
+        [user for user in users_names if user != rating_user_name],
         index=None,
         placeholder="Seleccione su nombre...",
         label_visibility=st.session_state.visibility,
         disabled=st.session_state.disabled,
         key="ratedUser",
     )
+
+    #get_rated_user_mail = lambda username: requests.get(f"http://localhost:8000/trabajadores/{'/'.join(username.lower().split())}").json()
+    #rated_user_mail = get_rated_user_mail(ratedUser)
+    #st.write(get_rated_user_mail)
     
     if st.session_state.ratedUser:
         
         st.subheader('Skills')
         rateSkills = st.slider("Valoración skills", 1, 5)
         descriptionSkills = st.text_area(
-            "Descripción skills:",
+            "¿En qué te basas para dar esa puntuación de Skills?:",
             None,
             label_visibility=st.session_state.visibility,
                 disabled=st.session_state.disabled,
-                key="descriptionSkills",
+                placeholder="Argumenta tu respuesta...",
             )
         
         st.subheader('Teamwork')
         rateTeamwork = st.slider("Valoración teamwork", 1, 5)
         descriptionTeamWork = st.text_area(
-            "Descripción teamwork:",
+            "¿En qué te basas para dar esa puntuación de teamwork?:",
             "",
             label_visibility=st.session_state.visibility,
                 disabled=st.session_state.disabled,
+                placeholder="Argumenta tu respuesta...",
             )
 
         st.subheader('Empathy')
         rateEmpathy = st.slider("Valoración empathy", 1, 5)
         descriptionEmpathy = st.text_area(
-            "Descripción empathy:",
+            "¿En qué te basas para dar esa puntuación de empathy?:",
             "",
             label_visibility=st.session_state.visibility,
                 disabled=st.session_state.disabled,
+                placeholder="Argumenta tu respuesta...",
             )
 
         st.subheader('Motivation')
         rateMotivation = st.slider("Valoración motivation", 1, 5)
         descriptionMotivation = st.text_area(
-            "Descripción motivation:",
+            "¿En qué te basas para dar esa puntuación de motivation?:",
             "",
             label_visibility=st.session_state.visibility,
                 disabled=st.session_state.disabled,
+                placeholder="Argumenta tu respuesta...",
             )
-
             
-        if st.button('Submit'):
+        if st.button('Enviar'):
             # Crear un nuevo DataFrame con los datos ingresados
             if descriptionSkills != '' and descriptionTeamWork != '' and descriptionEmpathy != '' and descriptionMotivation != '':
                 feedback_df = pd.DataFrame({
@@ -104,7 +116,6 @@ if st.session_state.ratingUser:
             })
                 st.success("Feedback enviado exitosamente!")
                 st.write(feedback_df)
-                feedback_df.to_csv(csv_path, index=False, mode='a', header=False)
                 
                 # Exportado a json para hacer la llamada a la url correspondiente de la API
                 feedback_df.to_json()
