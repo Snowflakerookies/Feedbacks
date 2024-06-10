@@ -23,7 +23,7 @@ def insert_new_feedback(feedback: Feedback, db: snowflake.connector.SnowflakeCon
     try:
         cursor = db.cursor()
         query = """INSERT INTO FACTS_FEEDBACK (FECHA, PUNT_SKILLS, DESC_SKILLS, PUNT_TEAMWORK, DESC_TEAMWORK, PUNT_EMPATHY, DESC_EMPATHY, PUNT_MOTIVATION, DESC_MOTIVATION, EMAIL_EVALUADOR, EMAIL_EVALUADO)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
         cursor.execute(query, (
             feedback.FECHA, feedback.PUNT_SKILLS, feedback.DESC_SKILLS, feedback.PUNT_TEAMWORK,
             feedback.DESC_TEAMWORK, feedback.PUNT_EMPATHY, feedback.DESC_EMPATHY,
@@ -36,21 +36,6 @@ def insert_new_feedback(feedback: Feedback, db: snowflake.connector.SnowflakeCon
         raise HTTPException(status_code=500, detail="Error al crear el feedback")
     finally:
         cursor.close()
-
-#Obtener un feedback por id
-@router.get("/feedback/{FEEDBACK_ID}/")
-def get_feedback_by_id(FEEDBACK_ID: int, db: snowflake.connector.SnowflakeConnection = Depends(get_snowflake_connection)):
-    try:
-        cursor = db.cursor()
-        cursor.execute("SELECT * FROM FACTS_FEEDBACK WHERE FEEDBACK_ID = %s", (FEEDBACK_ID,))
-        feedback = cursor.fetchone()
-        if not feedback:
-            raise HTTPException(status_code=404, detail="Feedback no encontrado")
-        return feedback
-    except Exception as e:
-        print(f"Error al leer desde Snowflake: {e}")
-        raise HTTPException(status_code=500, detail="Error al leer los datos")
-        
         
 # Obtener un feedback por EMAIL_EVALUADOR
 @router.get("/feedback/evaluador/{EMAIL_EVALUADOR}")
@@ -96,10 +81,10 @@ def update_feedback(FEEDBACK_ID: int, feedback: Feedback, db: snowflake.connecto
     try:
         cursor = db.cursor()
         query = """UPDATE FACTS_FEEDBACK SET 
-                   FECHA = %s, PUNT_SKILLS = %s, DESC_SKILLS = %s, PUNT_TEAMWORK = %s,
-                   DESC_TEAMWORK = %s, PUNT_EMPATHY = %s, DESC_EMPATHY = %s, PUNT_MOTIVATION = %s, DESC_MOTIVATION = %s,
-                   EMAIL_EVALUADOR = %s, EMAIL_EVALUADO = %s 
-                   WHERE FEEDBACK_ID = %s"""
+                FECHA = %s, PUNT_SKILLS = %s, DESC_SKILLS = %s, PUNT_TEAMWORK = %s,
+                DESC_TEAMWORK = %s, PUNT_EMPATHY = %s, DESC_EMPATHY = %s, PUNT_MOTIVATION = %s, DESC_MOTIVATION = %s,
+                EMAIL_EVALUADOR = %s, EMAIL_EVALUADO = %s 
+                WHERE FEEDBACK_ID = %s"""
         cursor.execute(query, (
             feedback.FECHA, feedback.PUNT_SKILLS, feedback.DESC_SKILLS, feedback.PUNT_TEAMWORK,
             feedback.DESC_TEAMWORK, feedback.PUNT_EMPATHY, feedback.DESC_EMPATHY,
