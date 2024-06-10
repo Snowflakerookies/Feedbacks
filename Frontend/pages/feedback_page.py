@@ -12,8 +12,6 @@ request_users_names = requests.get("http://localhost:8000/trabajadores/name").js
 users_names = list(map(lambda name: ' '.join(filter(None, name)), request_users_names))
 
 
-
-
 current_date = datetime.now().strftime("%d-%m-%y")
 current_directory = os.getcwd()
 
@@ -54,7 +52,7 @@ if st.session_state.ratingUser:
 
     #get_rated_user_mail = lambda username: requests.get(f"http://localhost:8000/trabajadores/{'/'.join(username.lower().split())}").json()
     #rated_user_mail = get_rated_user_mail(ratedUser)
-    #st.write(get_rated_user_mail)
+    #st.write(rated_user_mail)
     
     if st.session_state.ratedUser:
         
@@ -114,11 +112,13 @@ if st.session_state.ratingUser:
                 "Motivation": [rateMotivation],
                 "Descripción motivation": [descriptionMotivation]
             })
-                st.success("Feedback enviado exitosamente!")
-                st.write(feedback_df)
+                st.write(feedback_df.to_json())
+                send_feedback = requests.post("http://localhost:8000/feedback/", json=feedback_df.to_json())
                 
-                # Exportado a json para hacer la llamada a la url correspondiente de la API
-                feedback_df.to_json()
+                if send_feedback.status_code == 200:
+                    st.success("Feedback enviado exitosamente!")
+                else:
+                    st.error("Error al enviar el feedback")
                 
             else:
                 st.error("Por favor, rellene todos los campos")
