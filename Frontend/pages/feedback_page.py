@@ -15,24 +15,10 @@ request_name_by_mail = requests.get("http://localhost:8000/trabajadores/" + rati
 rating_user_name = f"{request_name_by_mail[0]} {request_name_by_mail[1]} {request_name_by_mail[2]}"
 request_users_names = requests.get("http://localhost:8000/trabajadores/name").json()
 users_names = list(map(lambda name: ' '.join(filter(None, name)), request_users_names))
-
 current_date = datetime.now().strftime("%Y-%m-%d")
 current_directory = os.getcwd()
 
 parse_rated_user_link = lambda data: "/".join([parte.replace(" ", "%20") if parte is not None else "" for parte in data[:2]]) + "?TRABAJADOR_APELLIDO2=" + (data[2].replace(" ", "%20") if data[2] is not None else "")
-
-
-if "feedback_df" not in st.session_state:
-    st.session_state.feedback_df = pd.DataFrame(columns=["Usuario",
-                                                        "Usuario valorado",
-                                                        "Skills",
-                                                        "Descripción skills",
-                                                        "Teamwork",
-                                                        "Descripción teamwork",
-                                                        "Empathy",
-                                                        "Descripción empathy",
-                                                        "Motivation",
-                                                        "Descripción motivation"])
 
 st.image('stemdoLOGO.png', caption=None, use_column_width='always')
 
@@ -56,31 +42,48 @@ if st.session_state.ratingUser:
         disabled=st.session_state.disabled,
         key="ratedUser",
     )
-
-
+    
     if st.session_state.ratedUser:
         
         def buscar_registro(data, nombre_completo):
             # Dividir el nombre completo en partes
             partes_nombre = nombre_completo.split()
             
+            # Inicializar una variable para almacenar la coincidencia encontrada
+            coincidencia_encontrada = None
+            
+            # Contar el número de coincidencias
+            numero_de_coincidencias = 0
+            
             # Recorrer la lista de registros y buscar la coincidencia
             for registro in data:
                 # Verificar si el registro es None o contiene valores None
                 if registro is None:
                     continue
+                
                 # Crear una lista plana del registro, reemplazando None con una cadena vacía
                 registro_flat = [parte if parte is not None else "" for parte in registro]
                 
-                # Eliminar cadenas vacías al final del registro_flat
-                while registro_flat and registro_flat[-1] == "":
-                    registro_flat.pop()
+                # Unir las partes del registro en una sola cadena para comparar
+                registro_completo = ' '.join(registro_flat)
                 
-                # Verificar si las partes del nombre completo coinciden con las partes del registro
-                if partes_nombre == registro_flat:
-                    return registro
-            return None
+                # Verificar si todas las partes del nombre completo están en el registro
+                if all(parte in registro_completo for parte in partes_nombre):
+                    numero_de_coincidencias += 1
+                    coincidencia_encontrada = registro
+                    
+                    # Si se ha encontrado más de una coincidencia, continuar buscando
+                    if numero_de_coincidencias > 1:
+                        break
+            
+            # Si se encontró exactamente una coincidencia, devolverla
+            if numero_de_coincidencias == 1:
+                return coincidencia_encontrada
+            else:
+                # Si no se encontró ninguna coincidencia o se encontraron múltiples coincidencias
+                return None
         
+        #limitar la busqueda al registro que encuentr primero (1), si hay varios entonces que busque ahí
         rated_user_reg = buscar_registro(request_users_names, ratedUser)
         
         if rated_user_reg:
