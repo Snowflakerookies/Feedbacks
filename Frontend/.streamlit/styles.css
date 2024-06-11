@@ -1,0 +1,47 @@
+body, input, textarea, select, button {
+    font-family: 'Roboto Mono', monospace !important;
+    color: #222226 !important;
+}
+
+
+textarea, select, .streamlit-select-streamlit-select-container {
+    background-color: #E0E0E5 !important;
+    border: none !important;
+    border-radius: 5px !important;
+    padding: 10px !important;
+    box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1) !important;
+}
+
+select option {
+    background-color: #E0E0E5 !important;
+    border: none !important;
+    border-radius: 5px !important;
+    padding: 10px !important;
+}
+
+button, button[role="button"] {
+    background-color: #5A5FEC !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 5px !important;
+    padding: 10px 20px !important;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1) !important;
+    cursor: pointer !important;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+button:hover, button[role="button"]:hover {
+    background-color: #7A7FED !important;
+    box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+textarea, select, button {
+    margin-bottom: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+select, .streamlit-select-streamlit-select-container {
+    color: #222226 !important;
+    text-align: left;
+}

@@ -5,6 +5,12 @@ import json
 from datetime import datetime
 import os
 
+import streamlit as st
+
+
+with open(".streamlit/styles.css") as f:
+    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
 # URL del endpoint de FastAPI
 url_mail = "http://127.0.0.1:8000/trabajadores/email"
 
@@ -15,10 +21,7 @@ response = requests.get(url_mail)
 if response.status_code != 200:
     st.error("Error en la solicitud")
 
-
 users_mails = [email[0] for email in response.json()]
-
-st.write(users_mails)
 
 st.image("stemdoLOGO.png", caption=None, use_column_width="always")
 
@@ -40,4 +43,4 @@ if st.button("Dar Feedback"):
             st.error("Error, no se ha encontrado un usuario con ese email, reviselo y vuelva a intentarlo")
     else:
         st.error("Por favor, introduzca su email corporativo")
-
+        

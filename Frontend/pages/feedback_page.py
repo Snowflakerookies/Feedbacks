@@ -3,17 +3,24 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
+import json
+
+import streamlit as st
+
+with open(".streamlit/styles.css") as f:
+    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 rating_user = st.session_state.ratingUser
 request_name_by_mail = requests.get("http://localhost:8000/trabajadores/" + rating_user).json()
 rating_user_name = f"{request_name_by_mail[0]} {request_name_by_mail[1]} {request_name_by_mail[2]}"
-
 request_users_names = requests.get("http://localhost:8000/trabajadores/name").json()
 users_names = list(map(lambda name: ' '.join(filter(None, name)), request_users_names))
 
-
-current_date = datetime.now().strftime("%d-%m-%y")
+current_date = datetime.now().strftime("%Y-%m-%d")
 current_directory = os.getcwd()
+
+parse_rated_user_link = lambda data: "/".join([parte.replace(" ", "%20") if parte is not None else "" for parte in data[:2]]) + "?TRABAJADOR_APELLIDO2=" + (data[2].replace(" ", "%20") if data[2] is not None else "")
+
 
 if "feedback_df" not in st.session_state:
     st.session_state.feedback_df = pd.DataFrame(columns=["Usuario",
@@ -50,11 +57,40 @@ if st.session_state.ratingUser:
         key="ratedUser",
     )
 
-    #get_rated_user_mail = lambda username: requests.get(f"http://localhost:8000/trabajadores/{'/'.join(username.lower().split())}").json()
-    #rated_user_mail = get_rated_user_mail(ratedUser)
-    #st.write(rated_user_mail)
-    
+
     if st.session_state.ratedUser:
+        
+        def buscar_registro(data, nombre_completo):
+            # Dividir el nombre completo en partes
+            partes_nombre = nombre_completo.split()
+            
+            # Recorrer la lista de registros y buscar la coincidencia
+            for registro in data:
+                # Verificar si el registro es None o contiene valores None
+                if registro is None:
+                    continue
+                # Crear una lista plana del registro, reemplazando None con una cadena vacía
+                registro_flat = [parte if parte is not None else "" for parte in registro]
+                
+                # Eliminar cadenas vacías al final del registro_flat
+                while registro_flat and registro_flat[-1] == "":
+                    registro_flat.pop()
+                
+                # Verificar si las partes del nombre completo coinciden con las partes del registro
+                if partes_nombre == registro_flat:
+                    return registro
+            return None
+        
+        rated_user_reg = buscar_registro(request_users_names, ratedUser)
+        
+        if rated_user_reg:
+            rated_user_json = json.dumps(rated_user_reg)
+            data = json.loads(rated_user_json)
+            rated_user_link = parse_rated_user_link(data)
+            request_rated_user_mail = requests.get("http://localhost:8000/trabajadores/" + rated_user_link).json()
+            rated_user_mail = request_rated_user_mail['email'][0]
+        else:
+            st.error("Registro no encontrado")
         
         st.subheader('Skills')
         rateSkills = st.slider("Valoración skills", 1, 5)
@@ -100,20 +136,21 @@ if st.session_state.ratingUser:
             # Crear un nuevo DataFrame con los datos ingresados
             if descriptionSkills != '' and descriptionTeamWork != '' and descriptionEmpathy != '' and descriptionMotivation != '':
                 feedback_df = pd.DataFrame({
-                "Fecha": current_date,
-                "Usuario": [st.session_state.ratingUser],
-                "Usuario valorado": [st.session_state.ratedUser],
-                "Skills": [rateSkills],
-                "Descripción skills": [descriptionSkills],
-                "Teamwork": [rateTeamwork],
-                "Descripción teamwork": [descriptionTeamWork],
-                "Empathy": [rateEmpathy],
-                "Descripción empathy": [descriptionEmpathy],
-                "Motivation": [rateMotivation],
-                "Descripción motivation": [descriptionMotivation]
+                "FECHA": [current_date],
+                "PUNT_SKILLS": [int(rateSkills)],
+                "DESC_SKILLS": [str(descriptionSkills)],
+                "PUNT_TEAMWORK": [int(rateTeamwork)],
+                "DESC_TEAMWORK": [str(descriptionTeamWork)],
+                "PUNT_EMPATHY": [int(rateEmpathy)],
+                "DESC_EMPATHY": [str(descriptionEmpathy)],
+                "PUNT_MOTIVATION": [int(rateMotivation)],
+                "DESC_MOTIVATION": [str(descriptionMotivation)],
+                "EMAIL_EVALUADOR": [str(rating_user)],
+                "EMAIL_EVALUADO": [str(rated_user_mail)]
             })
-                st.write(feedback_df.to_json())
-                send_feedback = requests.post("http://localhost:8000/feedback/", json=feedback_df.to_json())
+
+                feedback_json = feedback_df.to_json(orient='records').strip("[]")
+                send_feedback = requests.post("http://localhost:8000/feedback/", data=feedback_json)
                 
                 if send_feedback.status_code == 200:
                     st.success("Feedback enviado exitosamente!")

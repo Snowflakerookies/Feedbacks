@@ -2,4 +2,4 @@ fastapi
 pygame
 uvicorn
 mysql-connector-python 
-python-dotenv
+python-dotenv 
