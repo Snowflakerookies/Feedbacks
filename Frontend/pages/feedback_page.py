@@ -4,22 +4,28 @@ import pandas as pd
 from datetime import datetime
 import os
 import json
-
 import streamlit as st
 
 with open(".streamlit/styles.css") as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
+#Direccion de la API
+API_CALL = "http://localhost:8000"
+
+#Recuperamos el correo del usuario introducido en el main y se lo enviamos a la API para obtener el nombre asociado a ese correo.
 rating_user = st.session_state.ratingUser
-request_name_by_mail = requests.get("http://localhost:8000/trabajadores/" + rating_user).json()
+request_name_by_mail = requests.get(f"{API_CALL}/trabajadores/" + rating_user).json()
 rating_user_name = f"{request_name_by_mail[0]} {request_name_by_mail[1]} {request_name_by_mail[2]}"
-request_users_names = requests.get("http://localhost:8000/trabajadores/name").json()
+
+#Obtenemos de la API una lista de todos los nombres de los usuarios en la DB para mostrarlos en el desplegable 
+# en el cual se va a elegir a que usuario damos el feedback.
+request_users_names = requests.get(f"{API_CALL}/trabajadores/name").json()
 users_names = list(map(lambda name: ' '.join(filter(None, name)), request_users_names))
+
+#Obtenemos la fecha actual del sistema y la formateamos para añadirla al feedback que enviamos.
 current_date = datetime.now().strftime("%Y-%m-%d")
-current_directory = os.getcwd()
 
-parse_rated_user_link = lambda data: "/".join([parte.replace(" ", "%20") if parte is not None else "" for parte in data[:2]]) + "?TRABAJADOR_APELLIDO2=" + (data[2].replace(" ", "%20") if data[2] is not None else "")
-
+#Componente de Streamlit para mostrar el logo, situado en la carpeta del proyectro y siendo referenciado mediante su nombre.
 st.image('stemdoLOGO.png', caption=None, use_column_width='always')
 
 st.title('FEEDBACK')
@@ -30,6 +36,10 @@ if "visibility" not in st.session_state:
     st.session_state.visibility = "visible"
     st.session_state.disabled = True
 
+#Comprobamos que hay un usuario que va a mandar un feedback, en caso de no haberlo no se visualiza el formulario y 
+# se muestra un error al usuario indicandole que vuelva a la pantalla principal. 
+#De esta manera controlamos que haya un usuario valorador y que no se haya accedido al formulario de feedback 
+# directamente desde su URL.
 if st.session_state.ratingUser:
     st.session_state.disabled = False
     
@@ -43,57 +53,8 @@ if st.session_state.ratingUser:
         key="ratedUser",
     )
     
+    #Una vez seleccionado el usuario a valorar, se muestra el formulario.
     if st.session_state.ratedUser:
-        
-        def buscar_registro(data, nombre_completo):
-            # Dividir el nombre completo en partes
-            partes_nombre = nombre_completo.split()
-            
-            # Inicializar una variable para almacenar la coincidencia encontrada
-            coincidencia_encontrada = None
-            
-            # Contar el número de coincidencias
-            numero_de_coincidencias = 0
-            
-            # Recorrer la lista de registros y buscar la coincidencia
-            for registro in data:
-                # Verificar si el registro es None o contiene valores None
-                if registro is None:
-                    continue
-                
-                # Crear una lista plana del registro, reemplazando None con una cadena vacía
-                registro_flat = [parte if parte is not None else "" for parte in registro]
-                
-                # Unir las partes del registro en una sola cadena para comparar
-                registro_completo = ' '.join(registro_flat)
-                
-                # Verificar si todas las partes del nombre completo están en el registro
-                if all(parte in registro_completo for parte in partes_nombre):
-                    numero_de_coincidencias += 1
-                    coincidencia_encontrada = registro
-                    
-                    # Si se ha encontrado más de una coincidencia, continuar buscando
-                    if numero_de_coincidencias > 1:
-                        break
-            
-            # Si se encontró exactamente una coincidencia, devolverla
-            if numero_de_coincidencias == 1:
-                return coincidencia_encontrada
-            else:
-                # Si no se encontró ninguna coincidencia o se encontraron múltiples coincidencias
-                return None
-        
-        #limitar la busqueda al registro que encuentr primero (1), si hay varios entonces que busque ahí
-        rated_user_reg = buscar_registro(request_users_names, ratedUser)
-        
-        if rated_user_reg:
-            rated_user_json = json.dumps(rated_user_reg)
-            data = json.loads(rated_user_json)
-            rated_user_link = parse_rated_user_link(data)
-            request_rated_user_mail = requests.get("http://localhost:8000/trabajadores/" + rated_user_link).json()
-            rated_user_mail = request_rated_user_mail['email'][0]
-        else:
-            st.error("Registro no encontrado")
         
         st.subheader('Skills')
         rateSkills = st.slider("Valoración skills", 1, 5)
@@ -124,7 +85,7 @@ if st.session_state.ratingUser:
                 disabled=st.session_state.disabled,
                 placeholder="Argumenta tu respuesta...",
             )
-
+        
         st.subheader('Motivation')
         rateMotivation = st.slider("Valoración motivation", 1, 5)
         descriptionMotivation = st.text_area(
@@ -136,7 +97,17 @@ if st.session_state.ratingUser:
             )
             
         if st.button('Enviar'):
-            # Crear un nuevo DataFrame con los datos ingresados
+            
+            #En la BD se contempla el email del usuario valorado, no su nombre. Para obtenerlo realizamos una llamada
+            # a la API la cual nos devuelve el email asociado a un nombre completo, el cual enviamos sin espacios 
+            # parseandolo previamente mediante un .replace().
+            parse_rated_user_link = lambda data: data.replace(" ", "")
+            rated_user_link = parse_rated_user_link(ratedUser)
+            request_rated_user_mail = requests.get(f"{API_CALL}/trabajadores/json/email/" + rated_user_link).json()
+            rated_user_mail = request_rated_user_mail['email']
+
+            #Creamos un nuevo DataFrame con los datos ingresados a partir del cual obtendremos un JSON. Los datos de  
+            # este JSON los enviamos a la BD mediante una llamada POST a la API.
             if descriptionSkills != '' and descriptionTeamWork != '' and descriptionEmpathy != '' and descriptionMotivation != '':
                 feedback_df = pd.DataFrame({
                 "FECHA": [current_date],
@@ -150,20 +121,19 @@ if st.session_state.ratingUser:
                 "DESC_MOTIVATION": [str(descriptionMotivation)],
                 "EMAIL_EVALUADOR": [str(rating_user)],
                 "EMAIL_EVALUADO": [str(rated_user_mail)]
-            })
-
-                feedback_json = feedback_df.to_json(orient='records').strip("[]")
-                send_feedback = requests.post("http://localhost:8000/feedback/", data=feedback_json)
+                })
                 
+                feedback_json = feedback_df.to_json(orient='records').strip("[]")
+                send_feedback = requests.post(f"{API_CALL}/feedback/", data=feedback_json)
+                
+                #Se notifica al usuario si se ha enviado el feedback a la BD correctamente o no.
                 if send_feedback.status_code == 200:
                     st.success("Feedback enviado exitosamente!")
                 else:
                     st.error("Error al enviar el feedback")
-                
+
             else:
                 st.error("Por favor, rellene todos los campos")
-
-
-if not st.session_state.ratingUser:
+else:
     st.session_state.disabled = True
-
+    st.error("Error, por favor vuelva a la página de inicio.")

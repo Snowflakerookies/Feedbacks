@@ -3,3 +3,7 @@ pygame
 uvicorn
 mysql-connector-python 
 python-dotenv 
+msal
+pydantic
+python-jose
+passlib
