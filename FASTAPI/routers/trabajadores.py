@@ -28,7 +28,7 @@ def get_all_names(db: snowflake.connector.connection.SnowflakeConnection = Depen
     try:
         #Creación del cursor para situarse en la base de datos
         cursor = db.cursor()
-        cursor.execute("SELECT NOMBRE, APELLIDO1, APELLIDO2 FROM LANDING_TRABAJADOR")
+        cursor.execute("SELECT NOMBRE, APELLIDOS FROM LANDING_TRABAJADOR")
         #Se recuperan las filas del resultado de la query
         trabajadores = cursor.fetchall()
         #Devuelve todos los nombres de todos los trabajadores como json
@@ -85,7 +85,7 @@ def get_worker_name_by_email(EMAIL: str, db: snowflake.connector.connection.Snow
         mail = EMAIL.lower().strip()
         cursor = db.cursor()
         #Se compara el valor en minúsculas del email de la base de datos con el valor transformado que ha entrado como parámetro dentro de la consulta
-        cursor.execute("SELECT NOMBRE, APELLIDO1, APELLIDO2 FROM LANDING_TRABAJADOR WHERE LOWER(EMAIL) = LOWER(%s)", (mail,))
+        cursor.execute("SELECT NOMBRE, APELLIDOS FROM LANDING_TRABAJADOR WHERE LOWER(EMAIL) = LOWER(%s)", (mail,))
         #recupera la fila del resultado de la consulta y la devuelve como tupla
         trabajador = cursor.fetchone()
         #Si no devuelve resultado de la consulta, se muestra error
@@ -115,7 +115,7 @@ def get_email_by_name(
         query = """
             SELECT EMAIL 
             FROM LANDING_TRABAJADOR 
-            WHERE LOWER(CONCAT(NOMBRE, APELLIDO1, APELLIDO2)) LIKE LOWER(%s);
+            WHERE LOWER(CONCAT(REPLACE(NOMBRE, ' ', ''), REPLACE(APELLIDOS, ' ', ''))) LIKE LOWER(%s);
         """
         cursor.execute(query, (nombre,))
         #recupera la fila del resultado de la consulta y la devuelve como tupla
@@ -212,9 +212,9 @@ def create_worker(trabajador: Trabajador, db: snowflake.connector.connection.Sno
             raise HTTPException(status_code=400, detail="Ya existe un trabajador con ese email")
         #Ejecutar la query pasando como parámetros en VALUES() el valor de cada campo del trabajador que entra como parámetro
         cursor.execute("""
-            INSERT INTO LANDING_TRABAJADOR (NOMBRE, APELLIDO1, APELLIDO2, EMAIL, VERTICAL, COHORTE, PUESTO)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (trabajador.NOMBRE, trabajador.APELLIDO1, trabajador.APELLIDO2, trabajador.EMAIL, trabajador.VERTICAL, trabajador.COHORTE ,trabajador.PUESTO))
+            INSERT INTO LANDING_TRABAJADOR (NOMBRE, APELLIDOS, EMAIL, VERTICAL, COHORTE, PUESTO)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (trabajador.NOMBRE, trabajador.APELLIDOS, trabajador.EMAIL, trabajador.VERTICAL, trabajador.COHORTE ,trabajador.PUESTO))
         #Se ejecuta la query
         db.commit()
         #devuelve un mensaje de éxito
@@ -234,9 +234,9 @@ def update_worker_by_email(EMAIL: str, trabajador: Trabajador, db: snowflake.con
         cursor = db.cursor()
         #Ejecutar la query pasando como parámetros a actualizar (SET) el valor de cada campo del trabajador que entra como parámetro y el valor del email para el where
         cursor.execute("""
-            UPDATE LANDING_TRABAJADOR SET NOMBRE = %s, APELLIDO1 = %s, APELLIDO2 = %s,  EMAIL = %s, VERTICAL = %s, COHORTE = %s ,PUESTO = %s
+            UPDATE LANDING_TRABAJADOR SET NOMBRE = %s, APELLIDOS = %s,  EMAIL = %s, VERTICAL = %s, COHORTE = %s ,PUESTO = %s
             WHERE LOWER(EMAIL) = LOWER(%s)
-        """, (trabajador.NOMBRE, trabajador.APELLIDO1, trabajador.APELLIDO2, trabajador.EMAIL, trabajador.VERTICAL, trabajador.COHORTE, trabajador.PUESTO, mail))
+        """, (trabajador.NOMBRE, trabajador.APELLIDOS, trabajador.EMAIL, trabajador.VERTICAL, trabajador.COHORTE, trabajador.PUESTO, mail))
         #Se ejecuta la query
         db.commit()
         #Devuelve un mensaje de éxito tras actualizar los datos del trabajador en la base de datos

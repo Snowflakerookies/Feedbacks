@@ -4,8 +4,7 @@ from typing import Optional
 # Definición del modelo de datos para un trabajador
 class Trabajador(BaseModel):
     NOMBRE: str
-    APELLIDO1: str
-    APELLIDO2: Optional[str] = None
+    APELLIDOS: str
     EMAIL: str
     VERTICAL: str
     COHORTE : str
